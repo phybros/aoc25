@@ -6,6 +6,7 @@ ROTATION_PATTERN = "([LR])(\\d+)"
 # the thing says "The dial starts by pointing at 50."
 current = 50
 zeroes = 0
+passed_zeroes = 0
 
 with open("input.txt", "r") as f:
     # be fancy and use a list comprehension
@@ -37,6 +38,9 @@ for rotation in rotations:
         # since we aren't actually opening the safe, just throw everyhing away except the remainder lol
         remainder = abs(move) % 100
 
+        full_rotations = math.floor(move / 100)
+        passed_zeroes += full_rotations
+
         # do the actual rotation
         current += remainder * direction
         print(f"Moved {remainder} * {direction}")
@@ -48,12 +52,15 @@ for rotation in rotations:
     # "Similarly, turning the dial right from 99 one click makes it point at 0."
     if current > 99:
         current -= 100
+        passed_zeroes += 1
     elif current < 0:
         current += 100
+        passed_zeroes += 1
 
     if current == 0:
         zeroes += 1
 
     # print(f"rotating {rotation} from {old} to {current}")
 
-print(f"Total Zeroes: {zeroes}")
+print(f"Total Zeroes Stoped On: {zeroes}")
+print(f"Total Passed Zeroes: {passed_zeroes}")
