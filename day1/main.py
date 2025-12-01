@@ -11,7 +11,14 @@ with open("input.txt", "r") as f:
     # be fancy and use a list comprehension
     rotations = [r.strip() for r in f.read().split("\n") if r.strip() != ""]
 
+# just for testing
+stopafter = 99999
+
 for rotation in rotations:
+    if stopafter <= 0:
+        break
+
+    stopafter -= 1
     matches = re.match(ROTATION_PATTERN, rotation)
     m = matches.groups()
 
@@ -26,11 +33,13 @@ for rotation in rotations:
     old = current
 
     if abs(move) >= 100:
+        print("*" * 30)
         # since we aren't actually opening the safe, just throw everyhing away except the remainder lol
-        remainder = move % 100
+        remainder = abs(move) % 100
 
         # do the actual rotation
         current += remainder * direction
+        print(f"Moved {remainder} * {direction}")
     else:
         current += move
 
@@ -45,7 +54,6 @@ for rotation in rotations:
     if current == 0:
         zeroes += 1
 
-    print(f"rotating {move} from {old} to {current}")
-
+    # print(f"rotating {rotation} from {old} to {current}")
 
 print(f"Total Zeroes: {zeroes}")
