@@ -34,33 +34,33 @@ for rotation in rotations:
     old = current
 
     if abs(move) >= 100:
-        print("*" * 30)
         # since we aren't actually opening the safe, just throw everyhing away except the remainder lol
         remainder = abs(move) % 100
 
-        full_rotations = math.floor(move / 100)
+        full_rotations = math.floor(abs(move) / 100)
         passed_zeroes += full_rotations
 
-        # do the actual rotation
         current += remainder * direction
-        print(f"Moved {remainder} * {direction}")
     else:
         current += move
 
     # handle wrapping around because there are 100 numbers in a circle:
     # "Because the dial is a circle, turning the dial left from 0 one click makes it point at 99."
     # "Similarly, turning the dial right from 99 one click makes it point at 0."
+    #
+    # also going from or to 0 doesn't count as passing zero when we're doing wrapping
     if current > 99:
         current -= 100
-        passed_zeroes += 1
+        if old != 0 and current != 0:
+            passed_zeroes += 1
     elif current < 0:
         current += 100
-        passed_zeroes += 1
+        if old != 0 and current != 0:
+            passed_zeroes += 1
 
     if current == 0:
         zeroes += 1
 
-    # print(f"rotating {rotation} from {old} to {current}")
-
 print(f"Total Zeroes Stoped On: {zeroes}")
 print(f"Total Passed Zeroes: {passed_zeroes}")
+print(f"Total: {zeroes + passed_zeroes}")
