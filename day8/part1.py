@@ -28,7 +28,7 @@ class Vec3:
 class Day8:
     def __init__(self, boxes: list):
         self.boxes: list = boxes
-        self.circuits = []  # [[o] for o in self.boxes]
+        self.circuits = []
 
     def get_circuit_by_box(self, box):
         for circuit in self.circuits:
@@ -54,21 +54,6 @@ class Day8:
             self.connect(box, other)
 
         self.circuits = sorted(self.circuits, key=lambda c: len(c))
-
-    def closest_box(self, box):
-
-        closest = 9999999
-        closest_box = None
-
-        for other in self.boxes:
-            if other == box:
-                continue
-            distance = box.distance_to(other)
-            if distance < closest:
-                closest = distance
-                closest_box = other
-
-        return closest_box
 
     def connect(self, a, b):
         circuita = self.get_circuit_by_box(a)
