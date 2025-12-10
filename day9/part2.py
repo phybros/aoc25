@@ -7,7 +7,7 @@ class Day92:
         maxx = 0
         maxy = 0
         self.coords = []
-        with open("input.txt", "r") as f:
+        with open("input2.txt", "r") as f:
             for line in f.readlines():
                 if line.strip() == "": continue
                 parts = [int(x) for x in line.split(",")]
@@ -21,23 +21,6 @@ class Day92:
                     maxx = parts[0]
                 if parts[1] > maxy:
                     maxy = parts[1]
-
-        # for y in range(miny-1, maxy + 2):
-        #     for x in range(minx-1, maxx + 2):
-        #         tile = False
-        #         inside = self.point_in_polygon((x,y), self.coords) or self.point_on_edge((x,y), self.coords)
-        #         for xy in self.coords:
-        #             if x == xy[0] and y == xy[1]:
-        #                 tile = True
-
-        #         if tile:
-        #             print("#", end="")
-        #         else:
-        #             if inside:
-        #                 print("X", end="")
-        #             else:
-        #                 print(".", end="")
-        #     print()
 
     def point_on_edge(self, point, vertices):
         x, y = point
@@ -109,48 +92,53 @@ class Day92:
         return b
 
     def process(self):
-        pairs = set()
+        rectangles = set()
         # just do the same thing as day 8!
         for i, tile in enumerate(self.coords):
             for j, other in enumerate(self.coords):
                 if i >= j:
                     continue
 
-                distance = self.distance_to(tile, other)
-                pairs.add((distance, tile, other))
+                ax, ay = tile
+                bx, by = other
 
-        pairs = sorted(pairs, key=lambda p: p[0])
-        pairs.reverse()
-
-        largest = 0
-        for corners in pairs:
-            print(corners)
-            distance, a, b = corners
-            ax, ay = a
-            bx, by = b
-
-            invalid = False
-            for y in range(min(ay, by), max(ay, by)):
-                if invalid:
-                    break
-                print(y)
-                for x in range(min(ax, bx), max(ax, bx)):
-                    if invalid:
-                        break
-                    if not self.point_in_polygon((x, y), self.coords) and not self.point_on_edge((x, y), self.coords):
-                        invalid = True
-                        break
-            
-            if not invalid:
                 x = abs(ax - bx) + 1
                 y = abs(ay - by) + 1
 
                 area = x*y
-                if area > largest:
-                    largest = area
-                    print(f"found new largest: {largest}")
+                rectangles.add((area, tile, other))
 
-        print(largest)
+        rectangles = sorted(rectangles, key=lambda p: p[0])
+        rectangles.reverse()
+
+        for i, rectangle in enumerate(rectangles):
+            contained = True
+            area, a, b = rectangle
+            ax, ay = a
+            bx, by = b
+
+            for j, other in enumerate(rectangles):
+                if i >= j:
+                    continue
+                rarea, ra, rb = rectangle
+                rax, ray = ra
+                rbx, rby = rb
+                
+
+                for y in range(min(ay, by), max(ay, by) + 1):
+                    for x in range(min(ax, bx), max(ax, bx) + 1):
+                        if x >= min(rax, rbx) and x <= max(rax, rbx) and y >= min(ray, rby) and y <= max(ray, rby):
+                            pass
+                        else:
+                            contained = False
+                            break
+
+            if contained:
+                print(f"Rectangle {rectangle} was fully contained")
+            else:
+                print("Some of rectangle was not contained")
+
+        
 
 if __name__ == "__main__":
     day9 = Day92()
