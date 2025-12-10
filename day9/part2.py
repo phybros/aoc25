@@ -8,6 +8,9 @@ class Day92:
                 parts = [int(x) for x in line.split(",")]
                 self.coords.append((parts[0], parts[1]))
 
+        # Convert to set for O(1) membership checks
+        self.coords_set = set(self.coords)
+
     def segments_intersect(self, p1, p2, p3, p4):
         x1, y1 = p1
         x2, y2 = p2
@@ -48,22 +51,15 @@ class Day92:
     def point_on_edge(self, point, polygon):
         x, y = point
 
-        for i in range(len(polygon)):
-            p1 = polygon[i]
-            p2 = polygon[(i + 1) % len(polygon)]
+        # Check horizontal edges
+        for edge_y, minx, maxx in self.horiz_edges:
+            if edge_y == y and minx <= x <= maxx:
+                return True
 
-            x1, y1 = p1
-            x2, y2 = p2
-
-            # Horizontal edge
-            if y1 == y2 == y:
-                if min(x1, x2) <= x <= max(x1, x2):
-                    return True
-
-            # Vertical edge
-            if x1 == x2 == x:
-                if min(y1, y2) <= y <= max(y1, y2):
-                    return True
+        # Check vertical edges
+        for edge_x, miny, maxy in self.vert_edges:
+            if edge_x == x and miny <= y <= maxy:
+                return True
 
         return False
 
@@ -79,28 +75,14 @@ class Day92:
         x, y = point
         crossings = 0
 
-        for i in range(len(polygon)):
-            p1 = polygon[i]
-            p2 = polygon[(i + 1) % len(polygon)]
+        # Use pre-computed vertical edges
+        for p1, p2 in self.vertical_edges:
+            edge_x = p1[0]  # Both points have same x (vertical edge)
+            edge_miny = min(p1[1], p2[1])
+            edge_maxy = max(p1[1], p2[1])
 
-            x1, y1 = p1
-            x2, y2 = p2
-
-            # We only care about vertical edges (horizontal edges can't cross a horizontal ray)
-            if x1 != x2:
-                continue
-
-            # The vertical edge is at x = x1
-            edge_x = x1
-            edge_miny = min(y1, y2)
-            edge_maxy = max(y1, y2)
-
-            # Is the edge to the RIGHT of our point?
-            if edge_x <= x:
-                continue
-
-            # Does our ray (at height y) pass through this edge?
-            if edge_miny < y < edge_maxy:
+            # Is the edge to the RIGHT of our point and does our ray pass through it?
+            if edge_x > x and edge_miny < y < edge_maxy:
                 crossings += 1
 
         return crossings % 2 == 1
@@ -121,21 +103,39 @@ class Day92:
                 area = x * y
                 rectangles.add((area, tile, other))
 
-        rectangles = sorted(rectangles, key=lambda p: p[0])
-        rectangles.reverse()
+        rectangles = sorted(rectangles, key=lambda p: p[0], reverse=True)
 
-        self.edges = []
-        for i in range(len(self.coords)):
-            thiscoord = self.coords[i]
-            nextindex = i + 1
-            if nextindex >= len(self.coords):
-                nextindex = 0
-            nextcoord = self.coords[nextindex]
-            self.edges.append((thiscoord, nextcoord))
+        # Build polygon edges
+        self.edges = [
+            (self.coords[i], self.coords[(i + 1) % len(self.coords)])
+            for i in range(len(self.coords))
+        ]
+
+        # Pre-compute vertical edges for point_in_polygon (only uses vertical edges)
+        self.vertical_edges = [
+            (p1, p2) for p1, p2 in self.edges if p1[0] == p2[0]
+        ]
+
+        # Pre-compute horizontal edges with bounds for faster point_on_edge
+        self.horiz_edges = []
+        for p1, p2 in self.edges:
+            if p1[1] == p2[1]:  # Horizontal edge
+                y = p1[1]
+                minx = min(p1[0], p2[0])
+                maxx = max(p1[0], p2[0])
+                self.horiz_edges.append((y, minx, maxx))
+
+        # Pre-compute vertical edges with bounds for faster point_on_edge
+        self.vert_edges = []
+        for p1, p2 in self.edges:
+            if p1[0] == p2[0]:  # Vertical edge
+                x = p1[0]
+                miny = min(p1[1], p2[1])
+                maxy = max(p1[1], p2[1])
+                self.vert_edges.append((x, miny, maxy))
 
         largest_rect = (0, 0, 0)
-        for i, rectangle in enumerate(rectangles):
-            contained = True
+        for rectangle in rectangles:
             area, a, b = rectangle
             ax, ay = a
             bx, by = b
@@ -151,31 +151,84 @@ class Day92:
                 (corners[3], corners[0]),
             ]
 
-            for corner in corners:
-                if corner not in self.coords:
-                    if not self.point_in_polygon(
-                        corner, self.coords
-                    ) and not self.point_on_edge(corner, self.coords):
+            # Check corners first (fast fail on first bad corner)
+            contained = True
+            for point in corners:
+                if point in self.coords_set:
+                    continue
+
+                px, py = point
+
+                # Inline point_in_polygon check (using pre-computed bounds)
+                crossings = 0
+                for edge_x, edge_miny, edge_maxy in self.vert_edges:
+                    if edge_x > px and edge_miny < py < edge_maxy:
+                        crossings += 1
+
+                in_polygon = crossings % 2 == 1
+
+                # If not in polygon, check if on edge
+                if not in_polygon:
+                    on_edge = False
+                    for edge_y, minx, maxx in self.horiz_edges:
+                        if edge_y == py and minx <= px <= maxx:
+                            on_edge = True
+                            break
+                    if not on_edge:
+                        for edge_x, miny, maxy in self.vert_edges:
+                            if edge_x == px and miny <= py <= maxy:
+                                on_edge = True
+                                break
+
+                    if not on_edge:
                         contained = False
                         break
+
+            # Check edge midpoints if corners passed
             if contained:
                 for edge in rectedges:
-                    mid = (
+                    point = (
                         (edge[0][0] + edge[1][0]) // 2,
                         (edge[0][1] + edge[1][1]) // 2,
                     )
-                    if mid not in self.coords:
-                        if not self.point_in_polygon(
-                            mid, self.coords
-                        ) and not self.point_on_edge(mid, self.coords):
+                    if point in self.coords_set:
+                        continue
+
+                    px, py = point
+
+                    # Inline point_in_polygon check (using pre-computed bounds)
+                    crossings = 0
+                    for edge_x, edge_miny, edge_maxy in self.vert_edges:
+                        if edge_x > px and edge_miny < py < edge_maxy:
+                            crossings += 1
+
+                    in_polygon = crossings % 2 == 1
+
+                    # If not in polygon, check if on edge
+                    if not in_polygon:
+                        on_edge = False
+                        for edge_y, minx, maxx in self.horiz_edges:
+                            if edge_y == py and minx <= px <= maxx:
+                                on_edge = True
+                                break
+                        if not on_edge:
+                            for edge_x, miny, maxy in self.vert_edges:
+                                if edge_x == px and miny <= py <= maxy:
+                                    on_edge = True
+                                    break
+
+                        if not on_edge:
                             contained = False
                             break
-            if self.any_edges_cross(rectedges, self.edges):
+
+            # Check edge crossings last
+            if contained and self.any_edges_cross(rectedges, self.edges):
                 contained = False
 
             if contained:
-                if area > largest_rect[0]:
-                    largest_rect = rectangle
+                largest_rect = rectangle
+                # Early termination: rectangles are sorted largest first
+                break
 
         print(f"Largest Rectangle: {largest_rect}")
 
